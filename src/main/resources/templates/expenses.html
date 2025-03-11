@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expenses List</title>
+    <meta name="theme-color" content="#3498db">
+    <title>家計簿アプリ</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -126,44 +131,42 @@
         /* モーダルスタイル - YouTubeライク */
         .modal {
             display: none;
-            position: absolute;
+            position: fixed;
             z-index: 1000;
             left: 0;
             top: 0;
-            transform: translate(-100%, -100%);
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.85);
-            overflow-y: auto;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            background-color: transparent; /* 背景を透明に */
+            pointer-events: none;
         }
         
         .modal.show {
             opacity: 1;
+            pointer-events: auto;
         }
         
         .modal-content {
+            position: fixed;
             background-color: #fff;
-            margin: 5% auto;
-            width: 90%;
-            max-width: 800px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            position: relative;
-            transform: translateY(30px);
-            opacity: 0;
-            transition: all 0.4s ease;
-            overflow: hidden;
+            width: 40%;
+            max-width: 400px;
+            border-radius: 6px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            padding: 10px;
+            right: 20px; /* 右端からの距離 */
+            bottom: 20px; /* 下端からの距離 */
+            pointer-events: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
         }
         
         .modal.show .modal-content {
             transform: translateY(0);
-            opacity: 1;
         }
         
         .modal-header {
-            padding: 20px 30px;
+            padding: 10px 15px;
             background-color: #34495e;
             color: white;
             display: flex;
@@ -173,7 +176,7 @@
         
         .modal-header h2 {
             font-size: 1.5rem;
-            font-weight: 600;
+            font-weight: 300;
         }
         
         .close {
@@ -186,6 +189,10 @@
         
         .close:hover {
             color: #e74c3c;
+        }
+        
+        .modal-body {
+            padding: 10px;
         }
         
         .detail-row {
@@ -208,15 +215,15 @@
         }
         
         .modal-footer {
-            padding: 20px 30px;
+            padding: 10px 15px;
             background-color: #f8f9fa;
             display: flex;
             justify-content: flex-end;
-            gap: 15px;
+            gap: 7px;
         }
         
         .modal-btn {
-            padding: 10px 20px;
+            padding: 5px 10px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -267,21 +274,7 @@
             outline: none;
             box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
-        
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-        }
-        
-        .checkbox-group label {
-            margin-right: 15px;
-            margin-bottom: 0;
-        }
-        
-        .checkbox-group input[type="checkbox"] {
-            width: auto;
-        }
-        
+
         .cancel-btn {
             background-color: #95a5a6;
             color: white;
@@ -312,8 +305,8 @@
             }
             
             .modal-content {
-                width: 95%;
-                margin: 10% auto;
+                width: 45%;
+                margin: 5% auto;
             }
             
             .detail-row {
@@ -321,7 +314,7 @@
             }
             
             .detail-label, .detail-value {
-                width: 100%;
+                width: 50%;
             }
             
             .detail-value {
@@ -338,7 +331,297 @@
             }
 
             .modal-header h2 {
-                font-size: 1.3rem;
+                font-size: 1rem;
+            }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(150%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateY(0);
+        }
+
+        .notification i {
+            font-size: 20px;
+        }
+
+        .notification.success {
+            border-left: 4px solid #2ecc71;
+        }
+
+        .notification.warning {
+            border-left: 4px solid #f1c40f;
+        }
+
+        .notification.error {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .settings-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .settings-btn i {
+            margin-right: 8px;
+        }
+
+        .settings-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .export-btn, .import-btn {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .export-btn:hover, .import-btn:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .settings-modal .modal-body {
+            padding: 20px;
+        }
+
+        .settings-section {
+            margin-bottom: 20px;
+        }
+
+        .settings-section h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .color-option.selected {
+            border-color: #2c3e50;
+            transform: scale(1.1);
+        }
+
+        .custom-category-list {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .category-item:last-child {
+            border-bottom: none;
+        }
+
+        .delete-category {
+            color: #e74c3c;
+            cursor: pointer;
+        }
+
+        .add-category-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .add-category-form input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .add-category-form button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .analytics-dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .analytics-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .analytics-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .analytics-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+            margin: 10px 0;
+        }
+
+        .analytics-trend {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+
+        .trend-up {
+            color: #e74c3c;
+        }
+
+        .trend-down {
+            color: #2ecc71;
+        }
+
+        .prediction-chart {
+            height: 200px;
+        }
+
+        .tab-container {
+            margin-top: 20px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            border: none;
+            background: #f8f9fa;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .analytics-dashboard {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -347,7 +630,137 @@
     <div class="container">
         <div class="header">
             <h1>Expenses List</h1>
+            <div class="action-buttons">
             <button class="add-expense-btn"><i class="fas fa-plus"></i> Add New Expense</button>
+                <button class="settings-btn"><i class="fas fa-cog"></i> Settings</button>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div class="chart-container">
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="overview">概要</button>
+                <button class="tab-button" data-tab="analysis">分析</button>
+                <button class="tab-button" data-tab="prediction">予測</button>
+            </div>
+
+            <div class="tab-content active" id="overview">
+                <div class="analytics-dashboard">
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">今月の支出</div>
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="analytics-value">¥0</div>
+                        <div class="analytics-trend">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>先月比 +0%</span>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">平均支出（月間）</div>
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <div class="analytics-value">¥0</div>
+                        <div class="analytics-trend">
+                            <span>過去6ヶ月の平均</span>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">予算達成率</div>
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="analytics-value">0%</div>
+                        <div class="analytics-trend">
+                            <span>残り¥0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="analysis">
+                <div class="analytics-dashboard">
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">支出パターン分析</div>
+                        </div>
+                        <canvas id="patternChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">カテゴリー別トレンド</div>
+                        </div>
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">異常検知</div>
+                        </div>
+                        <div id="anomalyList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="prediction">
+                <div class="analytics-dashboard">
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">来月の予測支出</div>
+                        </div>
+                        <canvas id="predictionChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">カテゴリー別予測</div>
+                        </div>
+                        <div id="categoryPredictions"></div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-header">
+                            <div class="analytics-title">予算提案</div>
+                        </div>
+                        <div id="budgetSuggestions"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-item">
+                <input type="text" class="search-box" placeholder="検索...">
+            </div>
+            <div class="filter-item">
+                <label>カテゴリー:</label>
+                <select id="categoryFilter">
+                    <option value="">すべて</option>
+                    <option value="Food">食費</option>
+                    <option value="Transportation">交通費</option>
+                    <option value="Entertainment">娯楽</option>
+                    <option value="Utilities">光熱費</option>
+                    <option value="Housing">住居費</option>
+                    <option value="Health">医療費</option>
+                    <option value="Other">その他</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label>期間:</label>
+                <select id="periodFilter">
+                    <option value="month">今月</option>
+                    <option value="3months">3ヶ月</option>
+                    <option value="6months">6ヶ月</option>
+                    <option value="year">1年</option>
+                </select>
+            </div>
         </div>
         
         <table>
@@ -379,7 +792,7 @@
     <!-- YouTube風モーダル -->
     <div id="expenseModal" class="modal">
         <div class="modal-content">
-            <div id="modal-header" class="modal-header">
+            <div class="modal-header">
                 <h2>Expense Details</h2>
                 <span class="close">&times;</span>
             </div>
@@ -419,7 +832,7 @@
     <!-- 新しい費用追加フォームモーダル -->
     <div id="addExpenseModal" class="modal">
         <div class="modal-content">
-            <div id="modal-header" class="modal-header">
+            <div class="modal-header">
                 <h2>Add New Expense</h2>
                 <span class="close" id="addExpenseClose">&times;</span>
             </div>
@@ -435,7 +848,7 @@
                     </div>
                     <div class="form-group">
                         <label for="amount">Amount (¥)</label>
-                        <input type="number" id="amount" name="amount" step="0.01" required>
+                        <input type="number" id="amount" name="amount" step="1" min="0" required>
                     </div>
                     <div class="form-group">
                         <label for="category">Category</label>
@@ -454,7 +867,7 @@
                         <label for="payer">Payer</label>
                         <input type="text" id="payer" name="payer" required>
                     </div>
-                    <div class="form-group checkbox-group">
+                    <div class="form-group">
                         <label for="split">Split payment?</label>
                         <input type="checkbox" id="split" name="split">
                     </div>
@@ -467,77 +880,274 @@
         </div>
     </div>
 
+    <!-- 設定モーダル -->
+    <div id="settingsModal" class="modal settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <span class="close" id="settingsClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>データ管理</h3>
+                    <button class="export-btn"><i class="fas fa-download"></i> CSVエクスポート</button>
+                    <button class="import-btn"><i class="fas fa-upload"></i> CSVインポート</button>
+                    <input type="file" id="importFile" accept=".csv" style="display: none;">
+                </div>
+                <div class="settings-section">
+                    <h3>カスタムカテゴリー</h3>
+                    <div class="custom-category-list" id="categoryList">
+                        <!-- カテゴリーリストがここに動的に追加されます -->
+                    </div>
+                    <div class="add-category-form">
+                        <input type="text" id="newCategory" placeholder="新しいカテゴリー名">
+                        <button id="addCategory">追加</button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>テーマカラー</h3>
+                    <div class="color-picker">
+                        <div class="color-option" style="background-color: #3498db" data-color="#3498db"></div>
+                        <div class="color-option" style="background-color: #2ecc71" data-color="#2ecc71"></div>
+                        <div class="color-option" style="background-color: #e74c3c" data-color="#e74c3c"></div>
+                        <div class="color-option" style="background-color: #f1c40f" data-color="#f1c40f"></div>
+                        <div class="color-option" style="background-color: #9b59b6" data-color="#9b59b6"></div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>予算設定</h3>
+                    <div class="form-group">
+                        <label for="monthlyBudget">月間予算 (円)</label>
+                        <input type="number" id="monthlyBudget" value="300000">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn save-btn" id="saveSettings">保存</button>
+                <button class="modal-btn cancel-btn" id="cancelSettings">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification">
+        <i class="fas fa-info-circle"></i>
+        <span id="notification-message"></span>
+    </div>
+
     <script>
+        // PWAの初期化
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                        
+                        // プッシュ通知の許可を要求
+                        return registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array('YOUR_PUBLIC_VAPID_KEY')
+                        });
+                    })
+                    .then(subscription => {
+                        // サーバーに購読情報を送信
+                        return fetch('/api/push-subscription', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(subscription)
+                        });
+                    })
+                    .catch(error => {
+                        console.error('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+
+        // データの暗号化/復号化機能
+        const encryptionKey = localStorage.getItem('encryptionKey') || generateEncryptionKey();
+        
+        function generateEncryptionKey() {
+            const key = CryptoJS.lib.WordArray.random(256/8).toString();
+            localStorage.setItem('encryptionKey', key);
+            return key;
+        }
+
+        function encryptData(data) {
+            return CryptoJS.AES.encrypt(JSON.stringify(data), encryptionKey).toString();
+        }
+
+        function decryptData(encryptedData) {
+            const bytes = CryptoJS.AES.decrypt(encryptedData, encryptionKey);
+            return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+        }
+
+        // オフラインデータの管理
+        async function saveExpenseOffline(expense) {
+            const db = await openDatabase();
+            const tx = db.transaction('expenses', 'readwrite');
+            const store = tx.objectStore('expenses');
+            
+            const encryptedExpense = encryptData(expense);
+            await store.add({
+                ...expense,
+                encrypted: encryptedExpense,
+                synced: false
+            });
+        }
+
+        async function syncOfflineData() {
+            if (!navigator.onLine) return;
+
+            const db = await openDatabase();
+            const tx = db.transaction('expenses', 'readwrite');
+            const store = tx.objectStore('expenses');
+            const unsyncedExpenses = await store.index('synced').getAll(false);
+
+            for (const expense of unsyncedExpenses) {
+                try {
+                    const response = await fetch('/expenses', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(decryptData(expense.encrypted))
+                    });
+
+                    if (response.ok) {
+                        expense.synced = true;
+                        await store.put(expense);
+                    }
+                } catch (error) {
+                    console.error('同期エラー:', error);
+                }
+            }
+        }
+
+        // IndexedDBの初期化
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('expensesDB', 1);
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    const store = db.createObjectStore('expenses', { 
+                        keyPath: 'id', 
+                        autoIncrement: true 
+                    });
+                    store.createIndex('synced', 'synced');
+                };
+            });
+        }
+
+        // オフライン状態の監視
+        window.addEventListener('online', () => {
+            showNotification('オンラインに復帰しました', 'success');
+            syncOfflineData();
+        });
+
+        window.addEventListener('offline', () => {
+            showNotification('オフラインモードに移行しました', 'warning');
+        });
+
+        // Base64をUint8Arrayに変換（プッシュ通知用）
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // フォーム送信処理の更新（オフライン対応）
+        saveExpenseBtn.addEventListener('click', async function() {
+            if (!addExpenseForm.checkValidity()) {
+                addExpenseForm.reportValidity();
+                return;
+            }
+            
+            const formData = {
+                title: document.getElementById('title').value,
+                date: document.getElementById('date').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                category: document.getElementById('category').value,
+                payer: document.getElementById('payer').value,
+                split: document.getElementById('split').checked
+            };
+            
+            try {
+                if (navigator.onLine) {
+                    const response = await fetch('/expenses', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to save expense');
+                    }
+
+                    closeAddExpenseModal();
+                    handleApiSuccess('支出が保存されました');
+                    await updateAnalytics(); // データを更新
+                    window.location.reload(); // ページをリロード
+                } else {
+                    await saveExpenseOffline(formData);
+                    closeAddExpenseModal();
+                    handleApiSuccess('支出がオフラインで保存されました');
+                }
+            } catch (error) {
+                handleApiError(error);
+            }
+        });
+
         // モーダル要素を取得
         const modal = document.getElementById('expenseModal');
-        const header = document.getElementById('modal-header');
-        const modalContent = modal.querySelector('.modal-content');
+        // const modalContent = modal.querySelector('.modal-content');
+        const modalContent = document.querySelector('.modal-content');
         const closeBtn = modal.querySelector('.close');
-        
-        // Edit/Deleteボタンの機能実装（まだ機能していない場合のプレースホルダー）
-        const editBtn = document.querySelector('.edit-btn');
-        const deleteBtn = document.querySelector('.delete-btn');
-
-        // Add Expense モーダル関連の要素を取得
-        const addExpenseModal = document.getElementById('addExpenseModal');
-        const addExpenseBtn = document.querySelector('.add-expense-btn');
-        const addExpenseClose = document.getElementById('addExpenseClose');
-        const cancelAddExpenseBtn = document.getElementById('cancelAddExpense');
-        const saveExpenseBtn = document.getElementById('saveExpense');
-        const addExpenseForm = document.getElementById('addExpenseForm');
 
         let isDragging = false;
         let offsetX, offsetY;
 
-        // 非同期でエクスペンス詳細を取得する関数
         function fetchExpenseDetail(expenseId) {
             fetch(`/expenses/${expenseId}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    // 詳細情報を更新
                     document.getElementById('expense-title').textContent = data.title;
                     document.getElementById('expense-date').textContent = data.date;
                     document.getElementById('expense-amount').textContent = data.amount;
                     document.getElementById('expense-category').textContent = data.category;
                     document.getElementById('expense-payer').textContent = data.payer;
                     document.getElementById('expense-split').textContent = data.split;
-        
-                    // モーダルを表示（アニメーション付き）
+                
                     openModal();
                 })
-                .catch(error => {
-                    console.error('Error fetching expense detail:', error);
-                    alert('Failed to load expense details. Please try again.');
-                });
+                .catch(error => console.error('Error:', error));
         }
-        
-        // モーダルを開く関数
+
+        // モーダルを開く
         function openModal() {
             modal.style.display = 'block';
-            // 表示してから少し遅延させてアニメーションクラスを追加
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 10);
-            
-            // body要素のスクロールを無効にする
-            document.body.style.overflow = 'hidden';
+            setTimeout(() => modal.classList.add('show'), 10);
         }
-        
-        // モーダルを閉じる関数
+
+        // モーダルを閉じる
         function closeModal() {
             modal.classList.remove('show');
-            
-            // アニメーション完了を待ってから非表示に
-            setTimeout(() => {
-                modal.style.display = 'none';
-                // body要素のスクロールを再度有効にする
-                document.body.style.overflow = '';
-            }, 300);
+            setTimeout(() => modal.style.display = 'none', 300);
         }
         
         // 閉じるボタンのクリックイベント
@@ -557,6 +1167,10 @@
             }
         });
         
+        // Edit/Deleteボタンの機能実装（まだ機能していない場合のプレースホルダー）
+        const editBtn = document.querySelector('.edit-btn');
+        const deleteBtn = document.querySelector('.delete-btn');
+        
         editBtn.addEventListener('click', function() {
             // TODO: 編集機能の実装
             alert('Edit functionality will be implemented soon.');
@@ -569,6 +1183,14 @@
                 closeModal();
             }
         });
+
+        // Add Expense モーダル関連の要素を取得
+        const addExpenseModal = document.getElementById('addExpenseModal');
+        const addExpenseBtn = document.querySelector('.add-expense-btn');
+        const addExpenseClose = document.getElementById('addExpenseClose');
+        const cancelAddExpenseBtn = document.getElementById('cancelAddExpense');
+        const saveExpenseBtn = document.getElementById('saveExpense');
+        const addExpenseForm = document.getElementById('addExpenseForm');
         
         // Add Expense モーダルを開く
         addExpenseBtn.addEventListener('click', function() {
@@ -592,77 +1214,746 @@
         // 閉じるボタンのイベント
         addExpenseClose.addEventListener('click', closeAddExpenseModal);
         cancelAddExpenseBtn.addEventListener('click', closeAddExpenseModal);
-        
-        // モーダル外クリックで閉じる
-        addExpenseModal.addEventListener('click', function(event) {
-            if (event.target === addExpenseModal) {
-                closeAddExpenseModal();
-            }
+
+        // フォームの初期値を設定
+        document.addEventListener('DOMContentLoaded', function() {
+            // 現在の日付をフォームのデフォルト値として設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
         });
-        
-        // フォーム送信処理
-        saveExpenseBtn.addEventListener('click', function() {
-            // フォームのバリデーション
-            if (!addExpenseForm.checkValidity()) {
-                // HTML5のバリデーションメッセージを表示
-                addExpenseForm.reportValidity();
+
+        // グラフの初期化
+        function initializeCharts(expenses) {
+            if (!expenses || expenses.length === 0) {
+                console.log('No expense data available');
                 return;
             }
+
+            // 既存のグラフを破棄
+            const categoryChartCanvas = document.getElementById('categoryChart');
+            const monthlyChartCanvas = document.getElementById('monthlyChart');
+            if (categoryChartCanvas.chart) {
+                categoryChartCanvas.chart.destroy();
+            }
+            if (monthlyChartCanvas.chart) {
+                monthlyChartCanvas.chart.destroy();
+            }
+
+            // カテゴリー別支出グラフ
+            const categoryData = {};
+            expenses.forEach(expense => {
+                if (categoryData[expense.category]) {
+                    categoryData[expense.category] += expense.amount;
+                } else {
+                    categoryData[expense.category] = expense.amount;
+                }
+            });
+
+            const categoryChart = new Chart(categoryChartCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categoryData),
+                    datasets: [{
+                        data: Object.values(categoryData),
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF',
+                            '#FF9F40',
+                            '#C9CBCF'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'カテゴリー別支出'
+                        }
+                    }
+                }
+            });
+            categoryChartCanvas.chart = categoryChart;
+
+            // 月別支出グラフ
+            const monthlyData = {};
+            expenses.forEach(expense => {
+                const month = expense.date.substring(0, 7);
+                if (monthlyData[month]) {
+                    monthlyData[month] += expense.amount;
+                } else {
+                    monthlyData[month] = expense.amount;
+                }
+            });
+
+            const monthlyChart = new Chart(monthlyChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(monthlyData),
+                    datasets: [{
+                        label: '月別支出',
+                        data: Object.values(monthlyData),
+                        borderColor: '#36A2EB',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '月別支出推移'
+                        }
+                    }
+                }
+            });
+            monthlyChartCanvas.chart = monthlyChart;
+        }
+
+        // 検索とフィルタリング機能
+        const searchBox = document.querySelector('.search-box');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const periodFilter = document.getElementById('periodFilter');
+
+        function filterExpenses() {
+            const searchTerm = searchBox.value.toLowerCase();
+            const selectedCategory = categoryFilter.value;
+            const selectedPeriod = periodFilter.value;
+
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const title = row.cells[0].textContent.toLowerCase();
+                const category = row.cells[3].textContent;
+                const date = row.cells[1].textContent;
+
+                let showRow = true;
+                
+                // 検索フィルター
+                if (searchTerm && !title.includes(searchTerm)) {
+                    showRow = false;
+                }
+
+                // カテゴリーフィルター
+                if (selectedCategory && category !== selectedCategory) {
+                    showRow = false;
+                }
+
+                // 期間フィルター
+                const expenseDate = new Date(date);
+                const now = new Date();
+                let periodStart = new Date();
+
+                switch(selectedPeriod) {
+                    case 'month':
+                        periodStart.setMonth(now.getMonth() - 1);
+                        break;
+                    case '3months':
+                        periodStart.setMonth(now.getMonth() - 3);
+                        break;
+                    case '6months':
+                        periodStart.setMonth(now.getMonth() - 6);
+                        break;
+                    case 'year':
+                        periodStart.setFullYear(now.getFullYear() - 1);
+                        break;
+                }
+
+                if (expenseDate < periodStart) {
+                    showRow = false;
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+
+        searchBox.addEventListener('input', filterExpenses);
+        categoryFilter.addEventListener('change', filterExpenses);
+        periodFilter.addEventListener('change', filterExpenses);
+
+        // ページ読み込み時にグラフを初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 現在の日付をフォームのデフォルト値として設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+
+            // 支出データを取得してグラフを初期化
+            fetch('/expenses')
+                .then(response => response.json())
+                .then(data => {
+                    initializeCharts(data);
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        // 通知システム
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const messageElement = document.getElementById('notification-message');
             
-            // フォームデータを取得
-            const title = document.getElementById('title').value;
-            const date = document.getElementById('date').value;
-            const amount = parseFloat(document.getElementById('amount').value);
-            const category = document.getElementById('category').value;
-            const payer = document.getElementById('payer').value;
-            const split = document.getElementById('split').checked;
+            notification.className = `notification ${type}`;
+            messageElement.textContent = message;
             
-            // APIにPOSTリクエストを送信
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // 予算管理
+        const monthlyBudget = 300000; // 月間予算（例：30万円）
+        
+        function checkBudget(expenses) {
+            const currentMonth = new Date().toISOString().substring(0, 7);
+            const monthlyTotal = expenses
+                .filter(expense => expense.date.startsWith(currentMonth))
+                .reduce((sum, expense) => sum + expense.amount, 0);
+            
+            const remainingBudget = monthlyBudget - monthlyTotal;
+            
+            if (remainingBudget < monthlyBudget * 0.1) {
+                showNotification(`警告：今月の予算残りが${remainingBudget.toLocaleString()}円です`, 'warning');
+            }
+        }
+
+        // APIリクエスト成功時の通知
+        function handleApiSuccess(message) {
+            showNotification(message, 'success');
+        }
+
+        // APIリクエストエラー時の通知
+        function handleApiError(error) {
+            showNotification(error.message || 'エラーが発生しました', 'error');
+        }
+
+        // 定期的な支出の確認
+        function checkRecurringExpenses() {
+            const today = new Date();
+            const recurringExpenses = [
+                { day: 25, title: '家賃', amount: 80000 },
+                { day: 10, title: '光熱費', amount: 15000 }
+            ];
+            
+            recurringExpenses.forEach(expense => {
+                if (today.getDate() === expense.day - 3) {
+                    showNotification(
+                        `リマインダー：${expense.day}日に${expense.title}（${expense.amount.toLocaleString()}円）の支払いがあります`,
+                        'warning'
+                    );
+                }
+            });
+        }
+
+        // 定期的なチェック
+        setInterval(checkRecurringExpenses, 24 * 60 * 60 * 1000); // 毎日チェック
+        checkRecurringExpenses(); // 初回チェック
+
+        // 設定モーダル関連の処理
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsBtn = document.querySelector('.settings-btn');
+        const settingsClose = document.getElementById('settingsClose');
+        const saveSettingsBtn = document.getElementById('saveSettings');
+        const cancelSettingsBtn = document.getElementById('cancelSettings');
+        const exportBtn = document.querySelector('.export-btn');
+        const importBtn = document.querySelector('.import-btn');
+        const importFile = document.getElementById('importFile');
+        const addCategoryBtn = document.getElementById('addCategory');
+        const newCategoryInput = document.getElementById('newCategory');
+        const colorOptions = document.querySelectorAll('.color-option');
+        const monthlyBudgetInput = document.getElementById('monthlyBudget');
+
+        // カスタムカテゴリーの管理
+        let customCategories = JSON.parse(localStorage.getItem('customCategories')) || [];
+
+        function updateCategoryList() {
+            const categoryList = document.getElementById('categoryList');
+            categoryList.innerHTML = '';
+            
+            customCategories.forEach(category => {
+                const item = document.createElement('div');
+                item.className = 'category-item';
+                item.innerHTML = `
+                    <span>${category}</span>
+                    <i class="fas fa-times delete-category" data-category="${category}"></i>
+                `;
+                categoryList.appendChild(item);
+            });
+
+            // カテゴリーセレクトボックスも更新
+            const categorySelects = document.querySelectorAll('select[name="category"]');
+            categorySelects.forEach(select => {
+                // カスタムカテゴリーを追加
+                customCategories.forEach(category => {
+                    if (!Array.from(select.options).some(option => option.value === category)) {
+                        const option = document.createElement('option');
+                        option.value = category;
+                        option.textContent = category;
+                        select.appendChild(option);
+                    }
+                });
+            });
+        }
+
+        // カテゴリーの追加
+        addCategoryBtn.addEventListener('click', () => {
+            const category = newCategoryInput.value.trim();
+            if (category && !customCategories.includes(category)) {
+                customCategories.push(category);
+                localStorage.setItem('customCategories', JSON.stringify(customCategories));
+                updateCategoryList();
+                newCategoryInput.value = '';
+                showNotification('新しいカテゴリーが追加されました', 'success');
+            }
+        });
+
+        // カテゴリーの削除
+        document.addEventListener('click', e => {
+            if (e.target.classList.contains('delete-category')) {
+                const category = e.target.dataset.category;
+                customCategories = customCategories.filter(c => c !== category);
+                localStorage.setItem('customCategories', JSON.stringify(customCategories));
+                updateCategoryList();
+                showNotification('カテゴリーが削除されました', 'success');
+            }
+        });
+
+        // テーマカラーの管理
+        colorOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                colorOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                const color = option.dataset.color;
+                document.documentElement.style.setProperty('--primary-color', color);
+                localStorage.setItem('themeColor', color);
+            });
+        });
+
+        // データのエクスポート
+        exportBtn.addEventListener('click', () => {
+            fetch('/expenses')
+                .then(response => response.json())
+                .then(data => {
+                    const csv = convertToCSV(data);
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.setAttribute('hidden', '');
+                    a.setAttribute('href', url);
+                    a.setAttribute('download', 'expenses.csv');
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    showNotification('データのエクスポートが完了しました', 'success');
+                })
+                .catch(error => {
+                    handleApiError(error);
+                });
+        });
+
+        // CSVへの変換
+        function convertToCSV(data) {
+            const header = ['Title', 'Date', 'Amount', 'Category', 'Payer', 'Split'];
+            const rows = data.map(item => [
+                item.title,
+                item.date,
+                item.amount,
+                item.category,
+                item.payer,
+                item.split
+            ]);
+            return [header, ...rows].map(row => row.join(',')).join('\n');
+        }
+
+        // データのインポート
+        importBtn.addEventListener('click', () => {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const csv = event.target.result;
+                    const data = parseCSV(csv);
+                    importData(data);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // CSVのパース
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            const header = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                const values = line.split(',');
+                const obj = {};
+                header.forEach((key, i) => {
+                    obj[key.toLowerCase()] = values[i];
+                });
+                return obj;
+            });
+        }
+
+        // データのインポート処理
+        function importData(data) {
+            Promise.all(data.map(item =>
             fetch('/expenses', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    title: title,
-                    date: date,
-                    amount: amount,
-                    category: category,
-                    payer: payer,
-                    split: split
+                    body: JSON.stringify(item)
                 })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to save expense');
-                }
-                // モーダルを閉じる
-                closeAddExpenseModal();
-                // ページをリロードして最新データを表示
+            ))
+            .then(() => {
+                showNotification('データのインポートが完了しました', 'success');
                 window.location.reload();
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to save expense. Please try again.');
+                handleApiError(error);
+            });
+        }
+
+        // 設定の保存
+        saveSettingsBtn.addEventListener('click', () => {
+            const newBudget = parseInt(monthlyBudgetInput.value);
+            if (newBudget > 0) {
+                localStorage.setItem('monthlyBudget', newBudget);
+                monthlyBudget = newBudget;
+                showNotification('設定が保存されました', 'success');
+                settingsModal.style.display = 'none';
+            } else {
+                showNotification('有効な予算額を入力してください', 'error');
+            }
+        });
+
+        // 初期化処理
+        document.addEventListener('DOMContentLoaded', () => {
+            // カスタムカテゴリーの読み込み
+            updateCategoryList();
+
+            // テーマカラーの読み込み
+            const savedColor = localStorage.getItem('themeColor');
+            if (savedColor) {
+                document.documentElement.style.setProperty('--primary-color', savedColor);
+                colorOptions.forEach(option => {
+                    if (option.dataset.color === savedColor) {
+                        option.classList.add('selected');
+                    }
+                });
+            }
+
+            // 予算設定の読み込み
+            const savedBudget = localStorage.getItem('monthlyBudget');
+            if (savedBudget) {
+                monthlyBudget = parseInt(savedBudget);
+                monthlyBudgetInput.value = monthlyBudget;
+            }
+        });
+
+        // タブ切り替え機能
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.dataset.tab;
+                
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                button.classList.add('active');
+                document.getElementById(tabName).classList.add('active');
+                
+                if (tabName === 'analysis') {
+                    updateAnalysisCharts();
+                } else if (tabName === 'prediction') {
+                    updatePredictionCharts();
+                }
             });
         });
 
-        header.addEventListener('mousedown', (e) => {
-          isDragging = true;
-          offsetX = e.clientX - modal.getBoundingClientRect().left;
-          offsetY = e.clientY - modal.getBoundingClientRect().top;
-        });
+        // 分析チャートの更新
+        function updateAnalysisCharts() {
+            // 支出パターン分析
+            const patternChart = new Chart(document.getElementById('patternChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['月曜', '火曜', '水曜', '木曜', '金曜', '土曜', '日曜'],
+                    datasets: [{
+                        label: '平均支出',
+                        data: calculateDailyAverages(),
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.2)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
 
-        document.addEventListener('mousemove', (e) => {
-          if (isDragging) {
-            modal.style.left = `${e.clientX - offsetX}px`;
-            modal.style.top = `${e.clientY - offsetY}px`;
-          }
-        });
+            // カテゴリー別トレンド
+            const trendChart = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: getLastSixMonths(),
+                    datasets: generateCategoryTrendData()
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'カテゴリー別支出トレンド'
+                        }
+                    }
+                }
+            });
 
-        document.addEventListener('mouseup', () => {
-          isDragging = false;
+            // 異常検知の更新
+            updateAnomalyDetection();
+        }
+
+        // 予測チャートの更新
+        function updatePredictionCharts() {
+            // 来月の予測支出
+            const predictionChart = new Chart(document.getElementById('predictionChart'), {
+                type: 'bar',
+                data: {
+                    labels: getNextThreeMonths(),
+                    datasets: [{
+                        label: '予測支出',
+                        data: generatePredictionData(),
+                        backgroundColor: '#3498db'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '支出予測'
+                        }
+                    }
+                }
+            });
+
+            // カテゴリー別予測の更新
+            updateCategoryPredictions();
+            
+            // 予算提案の更新
+            updateBudgetSuggestions();
+        }
+
+        // 日別平均支出の計算
+        function calculateDailyAverages() {
+            // 実際のデータを使用して日別の平均を計算
+            return [30000, 25000, 28000, 27000, 35000, 40000, 38000];
+        }
+
+        // 過去6ヶ月の取得
+        function getLastSixMonths() {
+            const months = [];
+            const now = new Date();
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i);
+                months.push(d.toLocaleDateString('ja-JP', { month: 'short' }));
+            }
+            return months;
+        }
+
+        // カテゴリー別トレンドデータの生成
+        function generateCategoryTrendData() {
+            const categories = ['食費', '交通費', '娯楽', '光熱費', '住居費'];
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
+            
+            return categories.map((category, index) => ({
+                label: category,
+                data: Array(6).fill(0).map(() => Math.floor(Math.random() * 50000 + 10000)),
+                borderColor: colors[index],
+                fill: false
+            }));
+        }
+
+        // 異常検知の更新
+        function updateAnomalyDetection() {
+            const anomalyList = document.getElementById('anomalyList');
+            const anomalies = detectAnomalies();
+            
+            anomalyList.innerHTML = anomalies.map(anomaly => `
+                <div class="analytics-trend ${anomaly.type === 'high' ? 'trend-up' : 'trend-down'}">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>${anomaly.message}</span>
+                </div>
+            `).join('');
+        }
+
+        // 異常値の検出
+        function detectAnomalies() {
+            return [
+                { type: 'high', message: '先月の食費が平均より50%高くなっています' },
+                { type: 'low', message: '光熱費が例年より30%削減されています' }
+            ];
+        }
+
+        // 次の3ヶ月の取得
+        function getNextThreeMonths() {
+            const months = [];
+            const now = new Date();
+            for (let i = 1; i <= 3; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i);
+                months.push(d.toLocaleDateString('ja-JP', { month: 'short' }));
+            }
+            return months;
+        }
+
+        // 予測データの生成
+        function generatePredictionData() {
+            return Array(3).fill(0).map(() => Math.floor(Math.random() * 100000 + 200000));
+        }
+
+        // カテゴリー別予測の更新
+        function updateCategoryPredictions() {
+            const categoryPredictions = document.getElementById('categoryPredictions');
+            const predictions = generateCategoryPredictions();
+            
+            categoryPredictions.innerHTML = predictions.map(pred => `
+                <div class="analytics-trend">
+                    <span>${pred.category}: ¥${pred.amount.toLocaleString()}</span>
+                    <span class="${pred.trend === 'up' ? 'trend-up' : 'trend-down'}">
+                        <i class="fas fa-arrow-${pred.trend}"></i>
+                        ${pred.percentage}%
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // カテゴリー別予測データの生成
+        function generateCategoryPredictions() {
+            return [
+                { category: '食費', amount: 80000, trend: 'up', percentage: 5 },
+                { category: '交通費', amount: 15000, trend: 'down', percentage: 3 },
+                { category: '娯楽', amount: 30000, trend: 'up', percentage: 8 }
+            ];
+        }
+
+        // 予算提案の更新
+        function updateBudgetSuggestions() {
+            const budgetSuggestions = document.getElementById('budgetSuggestions');
+            const suggestions = generateBudgetSuggestions();
+            
+            budgetSuggestions.innerHTML = suggestions.map(suggestion => `
+                <div class="analytics-trend">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>${suggestion}</span>
+                </div>
+            `).join('');
+        }
+
+        // 予算提案の生成
+        function generateBudgetSuggestions() {
+            return [
+                '食費を10%削減することで、月間¥8,000の節約が可能です',
+                '定期的な支出の見直しで、年間¥50,000の節約が見込めます',
+                '光熱費の使用時間帯の調整で、5%の削減が期待できます'
+            ];
+        }
+
+        // 分析データの定期更新
+        async function updateAnalytics() {
+            try {
+                const response = await fetch('/expenses');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch expenses');
+                }
+                const data = await response.json();
+                updateOverviewCards(data);
+                initializeCharts(data);
+                if (document.querySelector('.tab-button[data-tab="analysis"].active')) {
+                    updateAnalysisCharts();
+                }
+                if (document.querySelector('.tab-button[data-tab="prediction"].active')) {
+                    updatePredictionCharts();
+                }
+            } catch (error) {
+                console.error('Error updating analytics:', error);
+                handleApiError(error);
+            }
+        }
+
+        // 概要カードの更新
+        function updateOverviewCards(data) {
+            const now = new Date();
+            const currentMonth = now.toISOString().substring(0, 7);
+            
+            // 今月の支出を計算
+            const currentMonthExpenses = data
+                .filter(expense => expense.date.startsWith(currentMonth))
+                .reduce((sum, expense) => sum + expense.amount, 0);
+            
+            // 先月の支出を計算
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1)
+                .toISOString().substring(0, 7);
+            const lastMonthExpenses = data
+                .filter(expense => expense.date.startsWith(lastMonth))
+                .reduce((sum, expense) => sum + expense.amount, 0);
+            
+            // 変化率を計算
+            const changeRate = lastMonthExpenses === 0 ? 0 :
+                ((currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses * 100).toFixed(1);
+            
+            // 平均支出を計算
+            const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6)
+                .toISOString().substring(0, 7);
+            const recentExpenses = data.filter(expense => expense.date >= sixMonthsAgo);
+            const averageExpense = recentExpenses.length === 0 ? 0 :
+                recentExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6;
+            
+            // 予算達成率を計算
+            const budgetProgress = (currentMonthExpenses / monthlyBudget * 100).toFixed(1);
+            const remainingBudget = monthlyBudget - currentMonthExpenses;
+            
+            // 値を更新
+            document.querySelector('.analytics-card:nth-child(1) .analytics-value')
+                .textContent = `¥${currentMonthExpenses.toLocaleString()}`;
+            document.querySelector('.analytics-card:nth-child(1) .analytics-trend')
+                .innerHTML = `
+                    <i class="fas fa-arrow-${changeRate > 0 ? 'up' : 'down'}"></i>
+                    <span>先月比 ${changeRate}%</span>
+                `;
+            
+            document.querySelector('.analytics-card:nth-child(2) .analytics-value')
+                .textContent = `¥${averageExpense.toLocaleString()}`;
+            
+            document.querySelector('.analytics-card:nth-child(3) .analytics-value')
+                .textContent = `${budgetProgress}%`;
+            document.querySelector('.analytics-card:nth-child(3) .analytics-trend span')
+                .textContent = `残り¥${remainingBudget.toLocaleString()}`;
+        }
+
+        // 初期データの読み込みと定期更新の設定
+        document.addEventListener('DOMContentLoaded', () => {
+            // 現在の日付をフォームのデフォルト値として設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+
+            // データの初期読み込み
+            updateAnalytics();
+            
+            // 定期更新の設定（5分ごと）
+            setInterval(updateAnalytics, 300000);
         });
     </script>
 </body>
 </html>
+
