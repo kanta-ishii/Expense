@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.expense.mapper.ExpenseMapper">
+
+    <!-- 1件の経費データを挿入 -->
+    <insert id="insertExpense" parameterType="com.example.expense.model.Expense">
+        INSERT INTO expense (date, title, amount, payer, split, category)
+        VALUES (#{date}, #{title}, #{amount}, #{payer}, #{split}, #{category})
+    </insert>
+
+    <!-- IDで経費データを取得 -->
+    <select id="getExpenseById" resultType="com.example.expense.model.Expense" parameterType="Long">
+        SELECT * FROM expense WHERE id = #{id}
+    </select>
+
+    <!-- すべての経費データを取得 -->
+    <select id="getAllExpenses" resultType="com.example.expense.model.Expense">
+        SELECT * FROM expense
+    </select>
+
+    <!-- 経費データを更新 -->
+    <update id="updateExpense" parameterType="com.example.expense.model.Expense">
+        UPDATE expense
+        SET date = #{date}, title = #{title}, amount = #{amount}, payer = #{payer},
+            split = #{split}, category = #{category}
+        WHERE id = #{id}
+    </update>
+
+    <!-- IDで経費データを削除 -->
+    <delete id="deleteExpense" parameterType="Long">
+        DELETE FROM expense WHERE id = #{id}
+    </delete>
+
+</mapper>

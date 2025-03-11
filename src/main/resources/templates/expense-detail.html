@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Expense Detail</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* グローバルスタイル */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 60%;
+            max-width: 800px;
+            padding: 40px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+        }
+
+        /* 詳細情報セクション */
+        .expense-detail {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .expense-detail div {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            color: #555;
+        }
+
+        .expense-detail strong {
+            color: #4CAF50;
+        }
+
+        /* 戻るリンク */
+        a {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        a:hover {
+            background-color: #0056b3;
+            transform: translateY(-3px);
+        }
+
+        /* レスポンシブデザイン */
+        @media screen and (max-width: 768px) {
+            .container {
+                width: 90%;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .expense-detail div {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Expense Detail</h1>
+        <div class="expense-detail">
+            <div><strong>Title:</strong> <span th:text="${expense.title}"></span></div>
+            <div><strong>Date:</strong> <span th:text="${expense.date}"></span></div>
+            <div><strong>Amount:</strong> <span th:text="${expense.amount}"></span></div>
+            <div><strong>Category:</strong> <span th:text="${expense.category}"></span></div>
+            <div><strong>Payer:</strong> <span th:text="${expense.payer}"></span></div>
+            <div><strong>Split:</strong> <span th:text="${expense.split == 1 ? 'Yes' : 'No'}"></span></div>
+        </div>
+        <a href="/">Back to Expenses List</a>
+    </div>
+</body>
+</html>
