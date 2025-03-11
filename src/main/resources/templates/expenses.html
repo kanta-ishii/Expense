@@ -84,12 +84,8 @@
         /* Expense Detail */
         .expense-detail {
             flex: 1;
-            min-width: 300px;
             position: sticky;
-            top: 20px;
-            width: 100%;
             padding: 20px;
-            margin-top: 30px;
             background-color: #f9f9f9;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -98,15 +94,49 @@
 
         .expense-detail div {
             margin-bottom: 15px;
+            font-size: 1em;
         }
-            .expense-detail div {
-                font-size: 1em;
-            }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 50%;
+            position: relative;
+        }
+        
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #555;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div>
         <h1>Expenses List</h1>
+    </div>
+    <div class="container">
+        <div class="expense-list">
             <table>
                 <thead>
                     <tr>
@@ -116,29 +146,34 @@
                         <th>Category</th>
                         <th>Payer</th>
                         <th>Details</th>
+                        <th>Split</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:each="expense : ${expenses}">
                         <td th:text="${expense.title}"></td>
                         <td th:text="${expense.date}"></td>
-                        <td th:text="${expense.amount}"></td>
+                        <td th:text="${expense.amount}">$</td>
                         <td th:text="${expense.category}"></td>
                         <td th:text="${expense.payer}"></td>
+                        <td th:text="${expense.split}"></td>
                         <td><button th:onclick="'fetchExpenseDetail(' + ${expense.id} + ')'">View Details</button></td>
                     </tr>
                 </tbody>
             </table>
+        </div>
 
-        <!-- Expense Detail -->
-        <div class="expense-detail">
-            <h2>Expense Detail</h2>
-            <div><strong>Title:</strong> <span id="expense-title"></span></div>
-            <div><strong>Date:</strong> <span id="expense-date"></span></div>
-            <div><strong>Amount:</strong> <span id="expense-amount"></span></div>
-            <div><strong>Category:</strong> <span id="expense-category"></span></div>
-            <div><strong>Payer:</strong> <span id="expense-payer"></span></div>
-            <div><strong>Split:</strong> <span id="expense-split"></span></div>
+        <div id="expenseModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>Expense Detail</h2>
+                <div><strong>Title:</strong> <span id="expense-title"></span></div>
+                <div><strong>Date:</strong> <span id="expense-date"></span></div>
+                <div><strong>Amount:</strong> <span id="expense-amount"></span></div>
+                <div><strong>Category:</strong> <span id="expense-category"></span></div>
+                <div><strong>Payer:</strong> <span id="expense-payer"></span></div>
+                <div><strong>Split:</strong> <span id="expense-split"></span></div>
+            </div>
         </div>
     </div>
 
@@ -146,7 +181,7 @@
         // 非同期でエクスペンス詳細を取得する関数
         function fetchExpenseDetail(expenseId) {
             fetch(`/${expenseId}`)
-                .then(response => response.json())  // サーバーからJSONデータを取得
+                .then(response => response.json())
                 .then(data => {
                     // 詳細情報を更新
                     document.getElementById('expense-title').textContent = data.title;
@@ -154,12 +189,25 @@
                     document.getElementById('expense-amount').textContent = data.amount;
                     document.getElementById('expense-category').textContent = data.category;
                     document.getElementById('expense-payer').textContent = data.payer;
-                    document.getElementById('expense-split').textContent = data.split === 1 ? 'Yes' : 'No';
-
-                    // 詳細情報エリアを表示
-                    document.querySelector('.expense-detail').style.display = 'block';
+                    document.getElementById('expense-split').textContent = data.split;
+        
+                    // モーダルを表示
+                    document.getElementById('expenseModal').style.display = 'block';
                 })
                 .catch(error => console.error('Error fetching expense detail:', error));
+        }
+        
+        // モーダルを閉じる関数
+        function closeModal() {
+            document.getElementById('expenseModal').style.display = 'none';
+        }
+        
+        // モーダル外をクリックしても閉じるようにする
+        window.onclick = function(event) {
+            const modal = document.getElementById('expenseModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
         }
     </script>
 </body>
