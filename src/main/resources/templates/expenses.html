@@ -19,6 +19,8 @@
         }
 
         .container {
+            display: flex;
+            flex-wrap: wrap;
             width: 90%;
             max-width: 1200px;
             margin: 0 auto;
@@ -74,8 +76,17 @@
             background-color: #2980b9;
         }
 
+        .expense-list {
+            flex: 2;
+            margin-right: 20px;
+        }
+
         /* Expense Detail */
         .expense-detail {
+            flex: 1;
+            min-width: 300px;
+            position: sticky;
+            top: 20px;
             width: 100%;
             padding: 20px;
             margin-top: 30px;
@@ -96,38 +107,28 @@
 <body>
     <div class="container">
         <h1>Expenses List</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Category</th>
-                    <th>Payer</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- エクスペンスリスト -->
-                <tr>
-                    <td>Expense 1</td>
-                    <td>2025-03-10</td>
-                    <td>$100</td>
-                    <td>Food</td>
-                    <td>John</td>
-                    <td><button onclick="fetchExpenseDetail(3)">View Details</button></td>
-                </tr>
-                <tr>
-                    <td>Expense 2</td>
-                    <td>2025-03-11</td>
-                    <td>$150</td>
-                    <td>Transport</td>
-                    <td>Alice</td>
-                    <td><button onclick="fetchExpenseDetail(4)">View Details</button></td>
-                </tr>
-                <!-- 他のエクスペンス行 -->
-            </tbody>
-        </table>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Payer</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="expense : ${expenses}">
+                        <td th:text="${expense.title}"></td>
+                        <td th:text="${expense.date}"></td>
+                        <td th:text="${expense.amount}"></td>
+                        <td th:text="${expense.category}"></td>
+                        <td th:text="${expense.payer}"></td>
+                        <td><button th:onclick="'fetchExpenseDetail(' + ${expense.id} + ')'">View Details</button></td>
+                    </tr>
+                </tbody>
+            </table>
 
         <!-- Expense Detail -->
         <div class="expense-detail">
