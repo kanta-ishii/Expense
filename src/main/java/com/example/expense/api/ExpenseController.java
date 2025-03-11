@@ -8,22 +8,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @Controller
+@RequestMapping("/expenses")
 public class ExpenseController {
 
     @Autowired
     private ExpenseService expenseService;
 
-    @PostMapping
-    public void createExpense(@RequestBody Expense expense) {
-        expenseService.addExpense(expense);
-    }
-
-    @GetMapping("/{id}")
-    @ResponseBody
-    public Expense getExpenseDetail(@PathVariable Integer id) {
-        return expenseService.getExpenseById(id);
-    }
-
+    // メインページを表示（expenses.html）
     @GetMapping
     public String getAllExpenses(Model model) {
         List<Expense> expenses = expenseService.getAllExpenses();
@@ -31,13 +22,32 @@ public class ExpenseController {
         return "expenses";
     }
 
-    @PutMapping
-    public void updateExpense(@RequestBody Expense expense) {
+    // 費用の詳細情報を取得するAPI（JSONで返す）
+    @GetMapping("/{id}")
+    @ResponseBody
+    public Expense getExpenseDetail(@PathVariable Integer id) {
+        return expenseService.getExpenseById(id);
+    }
+
+    // 新しい費用を追加するAPI
+    @PostMapping
+    @ResponseBody
+    public void createExpense(@RequestBody Expense expense) {
+        expenseService.addExpense(expense);
+    }
+
+    // 既存の費用を更新するAPI
+    @PutMapping("/{id}")
+    @ResponseBody
+    public void updateExpense(@PathVariable Integer id, @RequestBody Expense expense) {
+        expense.setId(id);
         expenseService.updateExpense(expense);
     }
 
+    // 費用を削除するAPI
     @DeleteMapping("/{id}")
-    public void deleteExpense(@PathVariable("id") Integer id) {
+    @ResponseBody
+    public void deleteExpense(@PathVariable Integer id) {
         expenseService.deleteExpense(id);
     }
 }
